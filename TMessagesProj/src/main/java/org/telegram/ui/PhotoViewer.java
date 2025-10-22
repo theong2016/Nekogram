@@ -14737,7 +14737,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 } else {
                     actionBarContainer.setSubtitle("", animated);
                 }
-                if (imageLocation.photo == null || imageLocation.photo.video_sizes.isEmpty()) {
+                if (imageLocation == null || imageLocation.photo == null || imageLocation.photo.video_sizes.isEmpty()) {
                     menuItem.showSubItem(gallery_menu_copy);
                     if (hasLens) menuItem.showSubItem(gallery_menu_lens);
                 } else {
