@@ -86,6 +86,9 @@ public class WebAppHelper {
                 0, 0, false, null, false, null, null, 0, false, false);
         props.internalType = type;
         var context = fragment.getParentActivity();
+        if (context == null) {
+            return;
+        }
         if (context instanceof LaunchActivity activity) {
             if (activity.getBottomSheetTabs() != null && activity.getBottomSheetTabs().tryReopenTab(props) != null) {
                 return;
