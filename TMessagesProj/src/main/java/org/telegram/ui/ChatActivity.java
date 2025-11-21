@@ -1862,14 +1862,9 @@ public class ChatActivity extends BaseFragment implements
                     return false;
                 }
                 var messageGroup = getValidGroupedMessage(message);
-                var noforwards = getMessagesController().isChatNoForwards(currentChat) || message.messageOwner.noforwards;
-                boolean allowChatActions = chatMode != MODE_SCHEDULED && (threadMessageObjects == null || !threadMessageObjects.contains(message)) &&
-                        !message.isSponsored() && (getMessageType(message) != 1 || message.getDialogId() != mergeDialogId) &&
-                        !(message.messageOwner.action instanceof TLRPC.TL_messageActionSecureValuesSent) &&
-                        (currentEncryptedChat != null || message.getId() >= 0) &&
-                        bottomChannelButtonsLayout != null && bottomChannelButtonsLayout.getVisibility() == View.VISIBLE && !(bottomOverlayChatWaitsReply && selectedObject != null && (MessageObject.getTopicId(currentAccount, selectedObject.messageOwner, ChatObject.isForum(currentChat)) != 0 || selectedObject.wasJustSent)) &&
-                        (currentChat == null || ((!ChatObject.isNotInChat(currentChat) || isThreadChat()) && (!ChatObject.isChannel(currentChat) || ChatObject.canPost(currentChat) || currentChat.megagroup) && ChatObject.canSendMessages(currentChat)));
-                boolean allowEdit = message.canEditMessage(currentChat) && !chatActivityEnterView.hasAudioToSend() && message.getDialogId() != mergeDialogId;
+                var noforwards = getMessagesController().isChatNoForwards(currentChat) || message.messageOwner.noforwards || getDialogId() == UserObject.VERIFY;
+                boolean allowChatActions = true;
+                boolean allowEdit = message.canEditMessage(currentChat) && !chatActivityEnterView.hasAudioToSend() && message.getDialogId() != mergeDialogId && message.type != MessageObject.TYPE_STORY && message.type != MessageObject.TYPE_POLL;
                 if (allowEdit && messageGroup != null) {
                     int captionsCount = 0;
                     for (int a = 0, N = messageGroup.messages.size(); a < N; a++) {
@@ -1882,6 +1877,22 @@ public class ChatActivity extends BaseFragment implements
                         }
                     }
                     allowEdit = captionsCount < 2;
+                }
+                if (message.isExpiredStory() || chatMode == MODE_SCHEDULED || threadMessageObjects != null && threadMessageObjects.contains(message) ||
+                        message.isSponsored() || getMessageType(message) == 1 && message.getDialogId() == mergeDialogId ||
+                        message.messageOwner.action instanceof TLRPC.TL_messageActionSecureValuesSent ||
+                        currentEncryptedChat == null && message.getId() < 0 ||
+                        bottomChannelButtonsLayout != null && bottomChannelButtonsLayout.getVisibility() == View.VISIBLE && !(bottomOverlayChatWaitsReply && message != null && (MessageObject.getTopicId(currentAccount, message.messageOwner, ChatObject.isForum(currentChat)) != 0 || message.wasJustSent))) {
+                    allowChatActions = false;
+                }
+                if (currentChat != null && (ChatObject.isNotInChat(currentChat) && !ChatObject.isMonoForum(currentChat) && !isThreadChat())) {
+                    allowChatActions = false;
+                }
+                if (currentChat != null && (ChatObject.isChannel(currentChat) && !ChatObject.canPost(currentChat) && !currentChat.megagroup)) {
+                    allowChatActions = false;
+                }
+                if (currentChat != null && (!ChatObject.canSendMessages(currentChat))) {
+                    allowChatActions = false;
                 }
                 switch (doubleTapAction) {
                     case NekoConfig.DOUBLE_TAP_ACTION_TRANSLATE:
