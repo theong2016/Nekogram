@@ -8,21 +8,6 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
-import androidx.credentials.CreateCredentialResponse;
-import androidx.credentials.CreatePublicKeyCredentialRequest;
-import androidx.credentials.Credential;
-import androidx.credentials.CredentialManager;
-import androidx.credentials.CredentialManagerCallback;
-import androidx.credentials.GetCredentialRequest;
-import androidx.credentials.GetCredentialResponse;
-import androidx.credentials.GetPublicKeyCredentialOption;
-import androidx.credentials.PrepareGetCredentialResponse;
-import androidx.credentials.exceptions.CreateCredentialCancellationException;
-import androidx.credentials.exceptions.CreateCredentialInterruptedException;
-import androidx.credentials.exceptions.GetCredentialCancellationException;
-import androidx.credentials.exceptions.GetCredentialException;
-import androidx.credentials.exceptions.GetCredentialInterruptedException;
-import androidx.credentials.exceptions.NoCredentialException;
 
 import org.json.JSONObject;
 import org.json.JSONStringer;
@@ -56,6 +41,7 @@ public class PasskeysController {
 
     public static void create(Context context, int currentAccount, Utilities.Callback2<TL_account.Passkey, String> done) {
         if (!BuildVars.SUPPORTS_PASSKEYS) return;
+/*
 
         final CredentialManager credentialManager = CredentialManager.create(context);
         final AlertDialog progressDialog = new AlertDialog(context, AlertDialog.ALERT_TYPE_SPINNER);
@@ -152,11 +138,12 @@ public class PasskeysController {
                     });
                 }
             }
-        );
+        );*/
     }
 
     public static Runnable login(Context context, int currentAccount, boolean clickedButton, Utilities.Callback3<Long, TLRPC.auth_Authorization, String> done) {
         if (!BuildVars.SUPPORTS_PASSKEYS) return null;
+        return null;/*
 
         final CredentialManager credentialManager = CredentialManager.create(context);
 
@@ -287,7 +274,7 @@ public class PasskeysController {
             if (cancel[0] != null) {
                 cancel[0].run();
             }
-        };
+        };*/
     }
 
     public static <T> Continuation<T> ktxCallback(Utilities.Callback2<T, Throwable> done) {
