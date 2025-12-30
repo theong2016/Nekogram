@@ -39,6 +39,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
 
     private int experimentRow;
     private int downloadSpeedBoostRow;
+    private int keepFormattingRow;
     private int autoInlineBotRow;
     private int forceFontWeightFallbackRow;
     private int mapDriftingFixRow;
@@ -212,6 +213,11 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
                 ((TextCheckCell) view).setChecked(NekoConfig.forceFontWeightFallback);
             }
             showRestartBulletin();
+        } else if (position == keepFormattingRow) {
+            NekoConfig.toggleKeepFormatting();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.keepFormatting);
+            }
         }
     }
 
@@ -244,6 +250,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
 
         experimentRow = addRow("experiment");
         downloadSpeedBoostRow = MessagesController.getInstance(currentAccount).getfileExperimentalParams ? -1 : addRow("downloadSpeedBoost");
+        keepFormattingRow = addRow("keepFormatting");
         autoInlineBotRow = addRow("autoInlineBot");
         forceFontWeightFallbackRow = addRow("forceFontWeightFallback");
         mapDriftingFixRow = addRow("mapDriftingFix");
@@ -311,6 +318,8 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
                         textCell.setTextAndValueAndCheck(LocaleController.getString(R.string.AutoInlineBot), LocaleController.getString(R.string.AutoInlineBotDesc), NekoConfig.autoInlineBot, true, divider);
                     } else if (position == forceFontWeightFallbackRow) {
                         textCell.setTextAndCheck(LocaleController.getString(R.string.ForceFontWeightFallback), NekoConfig.forceFontWeightFallback, divider);
+                    } else if (position == keepFormattingRow) {
+                        textCell.setTextAndCheck(LocaleController.getString(R.string.TranslationKeepFormatting), NekoConfig.keepFormatting, divider);
                     }
                     break;
                 }

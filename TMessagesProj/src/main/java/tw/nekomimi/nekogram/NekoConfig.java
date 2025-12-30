@@ -144,6 +144,7 @@ public class NekoConfig {
     public static boolean forceFontWeightFallback = false;
     public static boolean minimizedStickerCreator = false;
     public static boolean hideChannelBottomButtons = false;
+    public static boolean keepFormatting = true;
 
     public static boolean shouldNOTTrustMe = false;
 
@@ -248,6 +249,7 @@ public class NekoConfig {
             forceFontWeightFallback = preferences.getBoolean("forceFontWeightFallback", false);
             minimizedStickerCreator = preferences.getBoolean("minimizedStickerCreator", false);
             hideChannelBottomButtons = preferences.getBoolean("hideChannelBottomButtons", false);
+            keepFormatting = preferences.getBoolean("keepFormatting", true);
 
             LensHelper.checkLensSupportAsync();
             preferences.registerOnSharedPreferenceChangeListener(listener);
@@ -395,6 +397,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("downloadSpeedBoost2", boost);
+        editor.apply();
+    }
+
+    public static void toggleKeepFormatting() {
+        keepFormatting = !keepFormatting;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("keepFormatting", keepFormatting);
         editor.apply();
     }
 
