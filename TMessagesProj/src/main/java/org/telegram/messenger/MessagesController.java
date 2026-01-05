@@ -2556,8 +2556,8 @@ public class MessagesController extends BaseController implements NotificationCe
         getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
     }
 
-    private volatile long lastAppConfigCheckTime;
-    private Runnable loadAppConfigRunnable = this::loadAppConfig;
+    private volatile long lastAppConfigCheckTime = System.currentTimeMillis();
+    private final Runnable loadAppConfigRunnable = this::loadAppConfig;
 
     public void loadAppConfig() {
         loadAppConfig(true);
@@ -10202,8 +10202,9 @@ public class MessagesController extends BaseController implements NotificationCe
         if (lastPushRegisterSendTime != 0 && Math.abs(SystemClock.elapsedRealtime() - lastPushRegisterSendTime) >= 3 * 60 * 60 * 1000) {
             PushListenerController.sendRegistrationToServer(SharedConfig.pushType, SharedConfig.pushString);
         }
-        if (Math.abs(currentTime - lastAppConfigCheckTime) >= 4 * 60) {
-            AndroidUtilities.runOnUIThread(loadAppConfigRunnable);
+        if (Math.abs(currentTime - lastAppConfigCheckTime) >= 4 * 60 * 1000) {
+            AndroidUtilities.cancelRunOnUIThread(loadAppConfigRunnable);
+            AndroidUtilities.runOnUIThread(loadAppConfigRunnable, 200);
             lastAppConfigCheckTime = currentTime;
         }
         getLocationController().update();
