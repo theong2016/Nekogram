@@ -56,6 +56,8 @@ public class SharedConfig {
      */
     private final static int PROXY_SCHEMA_V2 = 2;
     private final static int PROXY_CURRENT_SCHEMA_VERSION = PROXY_SCHEMA_V2;
+    private final static int VMESS_SCHEMA_V1 = 1;
+    private final static int VMESS_CURRENT_SCHEMA_VERSION = VMESS_SCHEMA_V1;
 
     public final static int PASSCODE_TYPE_PIN = 0,
             PASSCODE_TYPE_PASSWORD = 1;
@@ -422,9 +424,38 @@ public class SharedConfig {
         }
     }
 
+    public static class VmessProxyInfo {
+
+        public String server;
+        public int port;
+        public String uuid;
+        public String security;
+        public boolean tls;
+
+        public VmessProxyInfo(String server, int port, String uuid, String security, boolean tls) {
+            this.server = server;
+            this.port = port;
+            this.uuid = uuid;
+            this.security = security;
+            this.tls = tls;
+            if (this.server == null) {
+                this.server = "";
+            }
+            if (this.uuid == null) {
+                this.uuid = "";
+            }
+            if (this.security == null) {
+                this.security = "";
+            }
+        }
+    }
+
     public static ArrayList<ProxyInfo> proxyList = new ArrayList<>();
     private static boolean proxyListLoaded;
     public static ProxyInfo currentProxy;
+    public static ArrayList<VmessProxyInfo> vmessProxyList = new ArrayList<>();
+    private static boolean vmessProxyListLoaded;
+    public static VmessProxyInfo currentVmessProxy;
 
     public static void saveConfig() {
         synchronized (sync) {
@@ -1481,6 +1512,56 @@ public class SharedConfig {
         }
     }
 
+    public static void loadVmessProxyList() {
+        if (vmessProxyListLoaded) {
+            return;
+        }
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
+        String currentServer = preferences.getString("vmess_proxy_server", "");
+        String currentUuid = preferences.getString("vmess_proxy_uuid", "");
+        String currentSecurity = preferences.getString("vmess_proxy_security", "");
+        boolean currentTls = preferences.getBoolean("vmess_proxy_tls", false);
+        int currentPort = preferences.getInt("vmess_proxy_port", 443);
+
+        vmessProxyListLoaded = true;
+        vmessProxyList.clear();
+        currentVmessProxy = null;
+
+        String list = preferences.getString("vmess_proxy_list", null);
+        if (!TextUtils.isEmpty(list)) {
+            byte[] bytes = Base64.decode(list, Base64.DEFAULT);
+            SerializedData data = new SerializedData(bytes);
+            int count = data.readInt32(false);
+            if (count == -1) {
+                int version = data.readByte(false);
+                if (version == VMESS_SCHEMA_V1) {
+                    count = data.readInt32(false);
+                    for (int i = 0; i < count; i++) {
+                        VmessProxyInfo info = new VmessProxyInfo(
+                                data.readString(false),
+                                data.readInt32(false),
+                                data.readString(false),
+                                data.readString(false),
+                                data.readBool(false));
+                        vmessProxyList.add(0, info);
+                        if (currentVmessProxy == null && !TextUtils.isEmpty(currentServer)) {
+                            if (currentServer.equals(info.server) && currentPort == info.port && currentUuid.equals(info.uuid) && currentSecurity.equals(info.security) && currentTls == info.tls) {
+                                currentVmessProxy = info;
+                            }
+                        }
+                    }
+                } else {
+                    FileLog.e("Unknown vmess proxy schema version: " + version);
+                }
+            }
+            data.cleanup();
+        }
+        if (currentVmessProxy == null && !TextUtils.isEmpty(currentServer)) {
+            VmessProxyInfo info = currentVmessProxy = new VmessProxyInfo(currentServer, currentPort, currentUuid, currentSecurity, currentTls);
+            vmessProxyList.add(0, info);
+        }
+    }
+
     public static void saveProxyList() {
         List<ProxyInfo> infoToSerialize = new ArrayList<>(proxyList);
         Collections.sort(infoToSerialize, (o1, o2) -> {
@@ -1515,6 +1596,25 @@ public class SharedConfig {
         serializedData.cleanup();
     }
 
+    public static void saveVmessProxyList() {
+        SerializedData serializedData = new SerializedData();
+        serializedData.writeInt32(-1);
+        serializedData.writeByte(VMESS_CURRENT_SCHEMA_VERSION);
+        int count = vmessProxyList.size();
+        serializedData.writeInt32(count);
+        for (int a = count - 1; a >= 0; a--) {
+            VmessProxyInfo info = vmessProxyList.get(a);
+            serializedData.writeString(info.server != null ? info.server : "");
+            serializedData.writeInt32(info.port);
+            serializedData.writeString(info.uuid != null ? info.uuid : "");
+            serializedData.writeString(info.security != null ? info.security : "");
+            serializedData.writeBool(info.tls);
+        }
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
+        preferences.edit().putString("vmess_proxy_list", Base64.encodeToString(serializedData.toByteArray(), Base64.NO_WRAP)).apply();
+        serializedData.cleanup();
+    }
+
     public static ProxyInfo addProxy(ProxyInfo proxyInfo) {
         loadProxyList();
         int count = proxyList.size();
@@ -1529,8 +1629,32 @@ public class SharedConfig {
         return proxyInfo;
     }
 
+    public static VmessProxyInfo addVmessProxy(VmessProxyInfo proxyInfo) {
+        loadVmessProxyList();
+        int count = vmessProxyList.size();
+        for (int a = 0; a < count; a++) {
+            VmessProxyInfo info = vmessProxyList.get(a);
+            if (proxyInfo.server.equals(info.server) && proxyInfo.port == info.port && proxyInfo.uuid.equals(info.uuid) && proxyInfo.security.equals(info.security) && proxyInfo.tls == info.tls) {
+                return info;
+            }
+        }
+        vmessProxyList.add(0, proxyInfo);
+        saveVmessProxyList();
+        return proxyInfo;
+    }
+
     public static boolean isProxyEnabled() {
         return MessagesController.getGlobalMainSettings().getBoolean("proxy_enabled", false) && currentProxy != null;
+    }
+
+    public static boolean isVmessProxyEnabled() {
+        return MessagesController.getGlobalMainSettings().getBoolean("vmess_proxy_enabled", false) && currentVmessProxy != null;
+    }
+
+    public static void setVmessProxyEnabled(boolean enabled) {
+        SharedPreferences.Editor editor = MessagesController.getGlobalMainSettings().edit();
+        editor.putBoolean("vmess_proxy_enabled", enabled);
+        editor.apply();
     }
 
     public static void deleteProxy(ProxyInfo proxyInfo) {
@@ -1553,6 +1677,22 @@ public class SharedConfig {
         }
         proxyList.remove(proxyInfo);
         saveProxyList();
+    }
+
+    public static void deleteVmessProxy(VmessProxyInfo proxyInfo) {
+        if (currentVmessProxy == proxyInfo) {
+            currentVmessProxy = null;
+            SharedPreferences.Editor editor = MessagesController.getGlobalMainSettings().edit();
+            editor.putString("vmess_proxy_server", "");
+            editor.putString("vmess_proxy_uuid", "");
+            editor.putString("vmess_proxy_security", "");
+            editor.putInt("vmess_proxy_port", 443);
+            editor.putBoolean("vmess_proxy_tls", false);
+            editor.putBoolean("vmess_proxy_enabled", false);
+            editor.apply();
+        }
+        vmessProxyList.remove(proxyInfo);
+        saveVmessProxyList();
     }
 
     public static void checkSaveToGalleryFiles() {

@@ -2580,6 +2580,17 @@
     <string name="UseProxyTelegramInfo2">This proxy may display a sponsored channel in your chat list. This doesn\'t reveal any of your Telegram traffic.</string>
     <string name="UseProxyForCalls">Use proxy for calls</string>
     <string name="UseProxyForCallsInfo">Proxy servers may degrade the quality of your calls.</string>
+    <string name="VmessProxySettings">VMess Proxy</string>
+    <string name="VmessProxyDetails">VMess Proxy Details</string>
+    <string name="UseVmessProxy">Use VMess proxy</string>
+    <string name="AddVmessProxy">Add VMess proxy</string>
+    <string name="DeleteVmessProxyTitle">Delete VMess proxy</string>
+    <string name="DeleteVmessProxyConfirm">Are you sure you want to delete this VMess proxy?</string>
+    <string name="VmessProxyServer">Server</string>
+    <string name="VmessProxyPort">Port</string>
+    <string name="VmessProxyUuid">UUID</string>
+    <string name="VmessProxySecurity">Security</string>
+    <string name="VmessProxyTls">Use TLS</string>
     <string name="ConnectingToProxyEnable">Enable</string>
     <string name="LowDiskSpaceTitle">Attention</string>
     <string name="LowDiskSpaceMessage">Your device is almost out of disk space. To free some space, you can set up Telegram to cache only recent media.</string>
@@ -10203,7 +10214,7 @@
 
     <string name="CocoonPoweredBy">Translations are powered by\n**🥚 Cocoon**.</string>
     <string name="CocoonPoweredByLink">**How does it work?**</string>
-    <string name="CocoonSubtitle">Cocoon (**Co**nfidential **Co**mpute **O**pen **N**etwork)\nhandles AI tasks safely and efficiently.</string>
+</resources>
     <string name="CocoonFeature1Title">Private</string>
     <string name="CocoonFeature1Text">No third party can access any data, such as translations, inside **@cocoon**</string>
     <string name="CocoonFeature1TextLink">https://t.me/cocoon</string>
