@@ -1,109 +1,48 @@
-name: 莲莲电报 - VMess 增强版
+name: Build APK
 
 on:
-  workflow_dispatch:
   push:
-    branches: 
+    branches:
+      - master
       - codex/add-built-in-vmess-agent-toggle
     paths-ignore:
       - '**.md'
+      - '.github/**'
+      - '!.github/workflows/**'
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
+    name: Build APK
     runs-on: ubuntu-latest
     
     steps:
-    - name: 检出代码
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-        fetch-depth: 0
-
-    - name: 设置 JDK 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: 设置 Android SDK
-      uses: android-actions/setup-android@v3
-
-    - name: 安装 NDK
-      run: |
-        echo "y" | sudo ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
-        echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/26.1.10909125" >> $GITHUB_ENV
-
-    - name: 个性化 - 应用名称
-      run: |
-        # 修改应用名称为"莲莲电报"
-        sed -i 's|<string name="AppName">Nekogram</string>|<string name="AppName">莲莲电报</string>|g' TMessagesProj/src/main/res/values*/strings.xml
-        sed -i 's|<string name="AppNameBeta">Nekogram Beta</string>|<string name="AppNameBeta">莲莲电报 VMess</string>|g' TMessagesProj/src/main/res/values*/strings.xml
-
-    - name: 下载并替换二次元图标
-      run: |
-        curl -L "https://www.loliapi.com/acg" -o /tmp/icon.jpg
-        sudo apt-get update && sudo apt-get install -y imagemagick
-        
-        convert /tmp/icon.jpg -resize 192x192^ -gravity center -extent 192x192 TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-        convert /tmp/icon.jpg -resize 144x144^ -gravity center -extent 144x144 TMessagesProj/src/main/res/mipmap-xxhdpi/ic_launcher.png
-        convert /tmp/icon.jpg -resize 96x96^ -gravity center -extent 96x96 TMessagesProj/src/main/res/mipmap-xhdpi/ic_launcher.png
-        convert /tmp/icon.jpg -resize 72x72^ -gravity center -extent 72x72 TMessagesProj/src/main/res/mipmap-hdpi/ic_launcher.png
-        convert /tmp/icon.jpg -resize 48x48^ -gravity center -extent 48x48 TMessagesProj/src/main/res/mipmap-mdpi/ic_launcher.png
-
-    - name: 下载加速补丁
-      run: |
-        DOWNLOAD_FILE="TMessagesProj/src/main/java/org/telegram/messenger/FileLoadOperation.java"
-        if [ -f "$DOWNLOAD_FILE" ]; then
-          sed -i 's/private static final int MAX_DOWNLOAD_REQUESTS = 2/private static final int MAX_DOWNLOAD_REQUESTS = 8/g' "$DOWNLOAD_FILE" || true
-          sed -i 's/private static final int MAX_DOWNLOAD_REQUESTS_BIG = 4/private static final int MAX_DOWNLOAD_REQUESTS_BIG = 16/g' "$DOWNLOAD_FILE" || true
-          echo "✅ 下载加速已启用 (8-16线程)"
-        fi
-
-    - name: 编译 APK
-      run: |
-        chmod +x gradlew
-        ./gradlew assembleAfatRelease --stacktrace
-        
-    - name: 签名 APK
-      run: |
-        keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 \
-          -storepass lianlian -keypass lianlian -alias lianlian \
-          -dname "CN=LianLian, OU=Telegram, O=LianLian, L=City, S=State, C=CN"
-        
-        APK_PATH=$(find TMessagesProj/build/outputs/apk -name "*.apk" | head -1)
-        if [ -f "$APK_PATH" ]; then
-          ${ANDROID_HOME}/build-tools/34.0.0/zipalign -v -p 4 "$APK_PATH" aligned.apk
-          ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign --ks release.jks \
-            --ks-pass pass:lianlian --key-pass pass:lianlian --out lianlian-vmess.apk aligned.apk
-          echo "✅ APK 签名完成"
-        fi
-
-    - name: 上传 APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: 莲莲电报-VMess版
-        path: lianlian-vmess.apk
-        retention-days: 30
-
-    - name: 创建 Release
-    
-uses: softprops/action-gh-release@v1      
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-        tag_name: vmess-v${{ github.run_number }}
-        name: 莲莲电报 VMess 版 #${{ github.run_number }}
-        body: |
-          🎉 莲莲电报 - 内置 VMess 代理版
-          
-          **特性：**
-          - ✅ 内置 VMess 代理管理（添加/编辑/删除/切换）
-          - ✅ 下载加速（8-16 线程并行）
-          - ✅ 二次元萌妹随机图标
-          - ✅ 基于 Nekogram 最新代码
-          
-          **使用方法：**
-          安装后进入 设置 → 数据与存储 → VMess 代理
-          
-          **编译时间：** ${{ github.event.head_commit.timestamp }}
-        files: lianlian-vmess.apk
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleAfatRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: APK
+          path: TMessagesProj/build/outputs/apk/afat/release/*.apk
