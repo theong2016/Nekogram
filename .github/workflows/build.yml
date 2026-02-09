@@ -87,7 +87,8 @@ jobs:
 
     - name: 创建 Release
     
-uses: softprops/action-gh-release@v1      with:
+uses: softprops/action-gh-release@v1      
+        with:
         tag_name: vmess-v${{ github.run_number }}
         name: 莲莲电报 VMess 版 #${{ github.run_number }}
         body: |
