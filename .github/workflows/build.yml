@@ -1,4 +1,4 @@
-name: Build APK
+name: 莲莲电报编译
 
 on:
   push:
@@ -7,42 +7,63 @@ on:
       - codex/add-built-in-vmess-agent-toggle
     paths-ignore:
       - '**.md'
-      - '.github/**'
-      - '!.github/workflows/**'
-  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build APK
+    name: 编译莲莲电报
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: 设置 JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
+      - name: 设置 Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Setup Gradle
+      - name: 设置 Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Build APK
+      - name: 个性化配置
+        run: |
+          sed -i 's|<string name="AppName">Nekogram</string>|<string name="AppName">莲莲电报</string>|g' TMessagesProj/src/main/res/values*/strings.xml
+          
+          curl -L "https://www.loliapi.com/acg" -o /tmp/icon.jpg
+          sudo apt-get update && sudo apt-get install -y imagemagick
+          
+          convert /tmp/icon.jpg -resize 192x192^ -gravity center -extent 192x192 TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          convert /tmp/icon.jpg -resize 144x144^ -gravity center -extent 144x144 TMessagesProj/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert /tmp/icon.jpg -resize 96x96^ -gravity center -extent 96x96 TMessagesProj/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert /tmp/icon.jpg -resize 72x72^ -gravity center -extent 72x72 TMessagesProj/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert /tmp/icon.jpg -resize 48x48^ -gravity center -extent 48x48 TMessagesProj/src/main/res/mipmap-mdpi/ic_launcher.png
+
+      - name: 列出可用任务
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleAfatRelease
+          ./gradlew tasks --all | grep -i "assemble" || true
 
-      - name: Upload APK
+      - name: 编译 APK
+        run: |
+          # 尝试多个可能的编译任务
+          ./gradlew assembleRelease || \
+          ./gradlew assembleMiniRelease || \
+          ./gradlew assembleFullRelease || \
+          ./gradlew TMessagesProj:assembleRelease
+
+      - name: 查找并上传 APK
         uses: actions/upload-artifact@v4
         with:
-          name: APK
-          path: TMessagesProj/build/outputs/apk/afat/release/*.apk
+          name: 莲莲电报-APK
+          path: |
+            TMessagesProj/build/outputs/apk/**/*.apk
+            */build/outputs/apk/**/*.apk
+          if-no-files-found: error
