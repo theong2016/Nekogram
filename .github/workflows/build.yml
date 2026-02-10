@@ -1,5 +1,4 @@
 name: 莲莲电报编译
-
 on:
   push:
     branches:
@@ -7,13 +6,11 @@ on:
       - codex/add-built-in-vmess-agent-toggle
     paths-ignore:
       - '**.md'
-        workflow_dispatch:
-
+  workflow_dispatch:
 jobs:
   build:
     name: 编译莲莲电报
     runs-on: ubuntu-latest
-    
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
