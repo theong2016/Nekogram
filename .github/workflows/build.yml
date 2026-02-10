@@ -33,6 +33,26 @@ jobs:
       - name: 设置 Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: 修复 strings.xml 格式
+        run: |
+          cd TMessagesProj/src/main/res/values
+          sed -i '/<\/resources>/d' strings.xml
+          echo "</resources>" >> strings.xml
+          echo "✅ XML 格式已修复"
+
+      - name: 配置 Gradle 内存
+        run: |
+          cat >> gradle.properties << EOF
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError
+          org.gradle.daemon=true
+          org.gradle.parallel=true
+          org.gradle.caching=true
+          android.enableJetifier=true
+          android.useAndroidX=true
+          EOF
+          
+          echo "✅ Gradle 内存配置完成（堆内存 4GB）"
+
       - name: 个性化配置
         run: |
           sed -i 's|<string name="AppName">Nekogram</string>|<string name="AppName">莲莲电报</string>|g' TMessagesProj/src/main/res/values*/strings.xml
@@ -46,44 +66,13 @@ jobs:
           convert /tmp/icon.jpg -resize 72x72^ -gravity center -extent 72x72 TMessagesProj/src/main/res/mipmap-hdpi/ic_launcher.png
           convert /tmp/icon.jpg -resize 48x48^ -gravity center -extent 48x48 TMessagesProj/src/main/res/mipmap-mdpi/ic_launcher.png
 
-      - name: 列出可用任务
-        run: |
-          chmod +x ./gradlew
-          ./gradlew tasks --all | grep -i "assemble" || true
-
       - name: 编译 APK
         run: |
-          # 尝试多个可能的编译任务
-          ./gradlew assembleRelease || \
-          ./gradlew assembleMiniRelease || \
-          ./gradlew assembleFullRelease || \
-          ./gradlew TMessagesProj:assembleRelease
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon --max-workers=2
 
-      - name: 查找并上传 APK
+      - name: 上传 APK
         uses: actions/upload-artifact@v4
         with:
           name: 莲莲电报-APK
-          path: |
-            TMessagesProj/build/outputs/apk/**/*.apk
-            */build/outputs/apk/**/*.apk
-          if-no-files-found: error
-      - name: 验证并修复 XML 文件
-        run: |
-          # 检查 XML 格式
-          xmllint --noout TMessagesProj/src/main/res/values/strings.xml || {
-            echo "❌ strings.xml 格式错误，尝试自动修复..."
-            
-            # 备份原文件
-            cp TMessagesProj/src/main/res/values/strings.xml /tmp/strings_backup.xml
-            
-            # 使用 xmllint 格式化（自动修复一些简单问题）
-            xmllint --format TMessagesProj/src/main/res/values/strings.xml > /tmp/strings_fixed.xml || {
-              echo "⚠️ 自动修复失败，显示错误位置："
-              xmllint TMessagesProj/src/main/res/values/strings.xml 2>&1 | head -20
-              exit 1
-            }
-            
-            # 替换文件
-            mv /tmp/strings_fixed.xml TMessagesProj/src/main/res/values/strings.xml
-            echo "✅ XML 已自动修复"
-          }
+          path: TMessagesProj/build/outputs/apk/**/*.apk
