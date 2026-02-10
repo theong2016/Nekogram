@@ -10214,7 +10214,6 @@
 
     <string name="CocoonPoweredBy">Translations are powered by\n**🥚 Cocoon**.</string>
     <string name="CocoonPoweredByLink">**How does it work?**</string>
-</resources>
     <string name="CocoonFeature1Title">Private</string>
     <string name="CocoonFeature1Text">No third party can access any data, such as translations, inside **@cocoon**</string>
     <string name="CocoonFeature1TextLink">https://t.me/cocoon</string>
