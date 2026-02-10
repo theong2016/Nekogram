@@ -1,9 +1,9 @@
-name: 莲莲电报自动编译
+name: Build APK
 
 on:
   workflow_dispatch:
   push:
-    branches: [ master ]
+    branches: [ master, main ]
     paths-ignore:
       - '**.md'
 
@@ -12,99 +12,108 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 检出代码
+    - name: Checkout code
       uses: actions/checkout@v4
       with:
         submodules: recursive
         fetch-depth: 0
 
-    - name: 设置 JDK 17
+    - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '21'
 
-    - name: 设置 Android SDK
+    - name: Set up Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: 安装 NDK
+    - name: Install NDK
       run: |
-        echo "y" | sudo ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
-        echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/26.1.10909125" >> $GITHUB_ENV
+        echo "y" | sudo ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.3.13750724"
+        echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/27.3.13750724" >> $GITHUB_ENV
 
-    - name: 个性化配置 - 应用名称
+    - name: Generate required build files
       run: |
-        # 修改应用名称为"莲莲电报"
-        sed -i 's|<string name="AppName">Nekogram</string>|<string name="AppName">莲莲电报</string>|g' TMessagesProj/src/main/res/values*/strings.xml
-        sed -i 's|<string name="AppNameBeta">Nekogram Beta</string>|<string name="AppNameBeta">莲莲电报 Beta</string>|g' TMessagesProj/src/main/res/values*/strings.xml
-
-    - name: 下载并替换应用图标
-      run: |
-        # 下载二次元萌妹图标
-        curl -L "https://www.loliapi.com/acg" -o /tmp/icon_raw.jpg
-
-        # 安装图片处理工具
-        sudo apt-get update && sudo apt-get install -y imagemagick
-
-        # 生成各种尺寸的图标
-        convert /tmp/icon_raw.jpg -resize 192x192^ -gravity center -extent 192x192 TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-        convert /tmp/icon_raw.jpg -resize 144x144^ -gravity center -extent 144x144 TMessagesProj/src/main/res/mipmap-xxhdpi/ic_launcher.png
-        convert /tmp/icon_raw.jpg -resize 96x96^ -gravity center -extent 96x96 TMessagesProj/src/main/res/mipmap-xhdpi/ic_launcher.png
-        convert /tmp/icon_raw.jpg -resize 72x72^ -gravity center -extent 72x72 TMessagesProj/src/main/res/mipmap-hdpi/ic_launcher.png
-        convert /tmp/icon_raw.jpg -resize 48x48^ -gravity center -extent 48x48 TMessagesProj/src/main/res/mipmap-mdpi/ic_launcher.png
-
-    - name: 植入 V2Ray 核心（VMess 支持）
-      run: |
-        # 下载 v2ray-core 的 Android 库
-        mkdir -p TMessagesProj/src/main/jniLibs/{arm64-v8a,armeabi-v7a,x86,x86_64}
-
-        # 下载预编译的 libv2ray.so
-        V2RAY_VERSION="5.21.0"
-        for ARCH in arm64-v8a armeabi-v7a x86 x86_64; do
-          wget -q "https://github.com/2dust/AndroidLibV2rayLite/releases/download/${V2RAY_VERSION}/libv2ray_${ARCH}.so" \
-            -O "TMessagesProj/src/main/jniLibs/${ARCH}/libv2ray.so" || echo "下载 ${ARCH} 失败，继续..."
-        done
-
-        # 添加 V2Ray 依赖到 build.gradle
-        if ! grep -q "libv2ray" TMessagesProj/build.gradle; then
-          echo "已内置 V2Ray 核心支持" >> TMessagesProj/build.gradle
+        # Generate Extra.java from example template
+        cp TMessagesProj/src/main/java/tw/nekomimi/nekogram/Extra.java.example \
+           TMessagesProj/src/main/java/tw/nekomimi/nekogram/Extra.java
+        # Fix the WEBVIEW_BOT_ID reference in the template
+        sed -i 's/return id == WEBVIEW_BOT_ID;/return false;/' \
+           TMessagesProj/src/main/java/tw/nekomimi/nekogram/Extra.java
+        # Verify the fix was applied
+        if grep -q 'WEBVIEW_BOT_ID' TMessagesProj/src/main/java/tw/nekomimi/nekogram/Extra.java; then
+          echo "ERROR: Failed to fix WEBVIEW_BOT_ID reference in Extra.java"
+          exit 1
         fi
 
-    - name: 下载加速补丁
-      run: |
-        # 修改下载并发数（提升下载速度）
-        DOWNLOAD_FILE="TMessagesProj/src/main/java/org/telegram/messenger/FileLoadOperation.java"
+        # Generate a placeholder google-services.json for the build
+        cat > TMessagesProj_App/google-services.json << 'EOF'
+        {
+          "project_info": {
+            "project_number": "000000000000",
+            "project_id": "nekogram-placeholder",
+            "storage_bucket": "nekogram-placeholder.appspot.com"
+          },
+          "client": [
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+                "android_client_info": {
+                  "package_name": "tw.nekomimi.nekogram"
+                }
+              },
+              "api_key": [
+                {
+                  "current_key": "placeholder"
+                }
+              ]
+            },
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:000000000000:android:0000000000000001",
+                "android_client_info": {
+                  "package_name": "tw.nekomimi.nekogram.beta"
+                }
+              },
+              "api_key": [
+                {
+                  "current_key": "placeholder"
+                }
+              ]
+            }
+          ],
+          "configuration_version": "1"
+        }
+        EOF
 
-        if [ -f "$DOWNLOAD_FILE" ]; then
-          sed -i 's/private static final int MAX_DOWNLOAD_REQUESTS = 2/private static final int MAX_DOWNLOAD_REQUESTS = 8/g' "$DOWNLOAD_FILE" || true
-          sed -i 's/private static final int MAX_DOWNLOAD_REQUESTS_BIG = 4/private static final int MAX_DOWNLOAD_REQUESTS_BIG = 16/g' "$DOWNLOAD_FILE" || true
-          echo "✅ 下载加速补丁已植入"
-        else
-          echo "⚠️  下载文件未找到，跳过加速补丁"
-        fi
-
-    - name: 编译 APK
+    - name: Build APK
+      env:
+        SENTRY_DSN: ''
+        SENTRY_AUTH_TOKEN: ''
       run: |
         chmod +x gradlew
-        ./gradlew assembleAfatRelease --stacktrace
+        ./gradlew TMessagesProj_App:assembleRelease --stacktrace --no-daemon
 
-    - name: 签名 APK
+    - name: Sign APK
       run: |
-        # 生成临时签名密钥
+        # Generate a temporary signing key
         keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 \
-          -storepass lianlian -keypass lianlian -alias lianlian \
-          -dname "CN=LianLian, OU=Dev, O=LianLian, L=Unknown, ST=Unknown, C=CN"
+          -storepass android -keypass android -alias release \
+          -dname "CN=Nekogram, OU=Dev, O=Nekogram, L=Unknown, ST=Unknown, C=US"
 
-        # 查找并签名所有 APK
+        # Find the installed build-tools version
+        BUILD_TOOLS_VERSION=$(ls -1 ${ANDROID_HOME}/build-tools/ | sort -V | tail -n1)
+
+        # Sign all APKs
         find TMessagesProj_App/build/outputs/apk/ -name "*.apk" | while read apk; do
-          ${ANDROID_HOME}/build-tools/36.0.0/apksigner sign \
-            --ks release.jks --ks-pass pass:lianlian \
-            --ks-key-alias lianlian --key-pass pass:lianlian \
-            "$apk" || echo "签名失败: $apk"
+          ${ANDROID_HOME}/build-tools/${BUILD_TOOLS_VERSION}/apksigner sign \
+            --ks release.jks --ks-pass pass:android \
+            --ks-key-alias release --key-pass pass:android \
+            "$apk" || echo "Failed to sign: $apk"
         done
 
-    - name: 上传 APK
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: lianlian-telegram-apk
+        name: nekogram-apk
         path: TMessagesProj_App/build/outputs/apk/**/*.apk
