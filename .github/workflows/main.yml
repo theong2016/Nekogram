@@ -3,7 +3,7 @@ name: 莲莲电报自动编译
 on:
   workflow_dispatch:
   push:
-    branches: [ master ]
+    branches: [ main ]
     paths-ignore:
       - '**.md'
 
@@ -35,8 +35,8 @@ jobs:
     - name: 个性化配置 - 应用名称
       run: |
         # 修改应用名称为"莲莲电报"
-        sed -i 's|<string name="AppName">Nekogram</string>|<string name="AppName">莲莲电报</string>|g' TMessagesProj/src/main/res/values*/strings.xml
-        sed -i 's|<string name="AppNameBeta">Nekogram Beta</string>|<string name="AppNameBeta">莲莲电报 Beta</string>|g' TMessagesProj/src/main/res/values*/strings.xml
+        sed -i 's|<string name="AppName">[^<>]*</string>|<string name="AppName">莲莲电报</string>|g' TMessagesProj/src/main/res/values*/strings.xml
+        sed -i 's|<string name="AppNameBeta">[^<>]*</string>|<string name="AppNameBeta">莲莲电报 Beta</string>|g' TMessagesProj/src/main/res/values*/strings.xml
         
         # 修改包名（可选）
         # sed -i 's|applicationId "nekox.messenger"|applicationId "com.lianlian.telegram"|g' TMessagesProj/build.gradle
@@ -98,3 +98,19 @@ jobs:
         # 生成临时签名密钥
         keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 \
           -storepass lianlian -keypass lianlian -alias lianlian \
+          -dname "CN=LianLian, OU=LianLian, O=LianLian, L=Beijing, ST=Beijing, C=CN"
+        
+        # 查找并签名 APK
+        find . -name "*.apk" -path "*/release/*" | while read apk; do
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore release.jks -storepass lianlian -keypass lianlian \
+            "$apk" lianlian
+        done
+
+    - name: 上传 APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: 莲莲电报-APK
+        path: |
+          TMessagesProj/build/outputs/apk/**/*.apk
+          TMessagesProj_App/build/outputs/apk/**/*.apk
