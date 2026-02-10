@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: 检出代码
       uses: actions/checkout@v4
@@ -37,18 +37,15 @@ jobs:
         # 修改应用名称为"莲莲电报"
         sed -i 's|<string name="AppName">Nekogram</string>|<string name="AppName">莲莲电报</string>|g' TMessagesProj/src/main/res/values*/strings.xml
         sed -i 's|<string name="AppNameBeta">Nekogram Beta</string>|<string name="AppNameBeta">莲莲电报 Beta</string>|g' TMessagesProj/src/main/res/values*/strings.xml
-        
-        # 修改包名（可选）
-        # sed -i 's|applicationId "nekox.messenger"|applicationId "com.lianlian.telegram"|g' TMessagesProj/build.gradle
 
     - name: 下载并替换应用图标
       run: |
         # 下载二次元萌妹图标
         curl -L "https://www.loliapi.com/acg" -o /tmp/icon_raw.jpg
-        
+
         # 安装图片处理工具
         sudo apt-get update && sudo apt-get install -y imagemagick
-        
+
         # 生成各种尺寸的图标
         convert /tmp/icon_raw.jpg -resize 192x192^ -gravity center -extent 192x192 TMessagesProj/src/main/res/mipmap-xxxhdpi/ic_launcher.png
         convert /tmp/icon_raw.jpg -resize 144x144^ -gravity center -extent 144x144 TMessagesProj/src/main/res/mipmap-xxhdpi/ic_launcher.png
@@ -60,14 +57,14 @@ jobs:
       run: |
         # 下载 v2ray-core 的 Android 库
         mkdir -p TMessagesProj/src/main/jniLibs/{arm64-v8a,armeabi-v7a,x86,x86_64}
-        
+
         # 下载预编译的 libv2ray.so
         V2RAY_VERSION="5.21.0"
         for ARCH in arm64-v8a armeabi-v7a x86 x86_64; do
           wget -q "https://github.com/2dust/AndroidLibV2rayLite/releases/download/${V2RAY_VERSION}/libv2ray_${ARCH}.so" \
             -O "TMessagesProj/src/main/jniLibs/${ARCH}/libv2ray.so" || echo "下载 ${ARCH} 失败，继续..."
         done
-        
+
         # 添加 V2Ray 依赖到 build.gradle
         if ! grep -q "libv2ray" TMessagesProj/build.gradle; then
           echo "已内置 V2Ray 核心支持" >> TMessagesProj/build.gradle
@@ -76,11 +73,9 @@ jobs:
     - name: 下载加速补丁
       run: |
         # 修改下载并发数（提升下载速度）
-        # 定位到 FileLoadOperation.java 并修改最大并发连接数
         DOWNLOAD_FILE="TMessagesProj/src/main/java/org/telegram/messenger/FileLoadOperation.java"
-        
+
         if [ -f "$DOWNLOAD_FILE" ]; then
-          # 将默认的并发数从 2 提升到 8
           sed -i 's/private static final int MAX_DOWNLOAD_REQUESTS = 2/private static final int MAX_DOWNLOAD_REQUESTS = 8/g' "$DOWNLOAD_FILE" || true
           sed -i 's/private static final int MAX_DOWNLOAD_REQUESTS_BIG = 4/private static final int MAX_DOWNLOAD_REQUESTS_BIG = 16/g' "$DOWNLOAD_FILE" || true
           echo "✅ 下载加速补丁已植入"
@@ -92,9 +87,24 @@ jobs:
       run: |
         chmod +x gradlew
         ./gradlew assembleAfatRelease --stacktrace
-        
+
     - name: 签名 APK
       run: |
         # 生成临时签名密钥
         keytool -genkey -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 \
           -storepass lianlian -keypass lianlian -alias lianlian \
+          -dname "CN=LianLian, OU=Dev, O=LianLian, L=Unknown, ST=Unknown, C=CN"
+
+        # 查找并签名所有 APK
+        find TMessagesProj_App/build/outputs/apk/ -name "*.apk" | while read apk; do
+          ${ANDROID_HOME}/build-tools/36.0.0/apksigner sign \
+            --ks release.jks --ks-pass pass:lianlian \
+            --ks-key-alias lianlian --key-pass pass:lianlian \
+            "$apk" || echo "签名失败: $apk"
+        done
+
+    - name: 上传 APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: lianlian-telegram-apk
+        path: TMessagesProj_App/build/outputs/apk/**/*.apk
