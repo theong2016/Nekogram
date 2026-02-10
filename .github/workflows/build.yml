@@ -99,8 +99,7 @@ jobs:
           convert /tmp/icon.jpg -resize 96x96^ -gravity center -extent 96x96 TMessagesProj/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert /tmp/icon.jpg -resize 72x72^ -gravity center -extent 72x72 TMessagesProj/src/main/res/mipmap-hdpi/ic_launcher.png
           convert /tmp/icon.jpg -resize 48x48^ -gravity center -extent 48x48 TMessagesProj/src/main/res/mipmap-mdpi/ic_launcher.png
-
-      - name: 编译 APK
+                - name: 编译 APK
         run: |
           chmod +x ./gradlew
           ./gradlew assembleRelease --no-daemon --max-workers=2
@@ -110,5 +109,5 @@ jobs:
         with:
           name: 莲莲电报-APK
           path: |
-          TMessagesProj/build/outputs/apk/**/*.apk
+            TMessagesProj/build/outputs/apk/**/*.apk
             TMessagesProj_App/build/outputs/apk/**/*.apk
