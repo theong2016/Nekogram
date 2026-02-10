@@ -67,3 +67,23 @@ jobs:
             TMessagesProj/build/outputs/apk/**/*.apk
             */build/outputs/apk/**/*.apk
           if-no-files-found: error
+      - name: 验证并修复 XML 文件
+        run: |
+          # 检查 XML 格式
+          xmllint --noout TMessagesProj/src/main/res/values/strings.xml || {
+            echo "❌ strings.xml 格式错误，尝试自动修复..."
+            
+            # 备份原文件
+            cp TMessagesProj/src/main/res/values/strings.xml /tmp/strings_backup.xml
+            
+            # 使用 xmllint 格式化（自动修复一些简单问题）
+            xmllint --format TMessagesProj/src/main/res/values/strings.xml > /tmp/strings_fixed.xml || {
+              echo "⚠️ 自动修复失败，显示错误位置："
+              xmllint TMessagesProj/src/main/res/values/strings.xml 2>&1 | head -20
+              exit 1
+            }
+            
+            # 替换文件
+            mv /tmp/strings_fixed.xml TMessagesProj/src/main/res/values/strings.xml
+            echo "✅ XML 已自动修复"
+          }
